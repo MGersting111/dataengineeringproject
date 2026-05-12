@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="mb-6 text-3xl font-black text-brandNight">Your Cart</h1>
+
+{% if not items %}
+  <p class="rounded bg-white p-6 shadow">Your cart is empty.</p>
+{% else %}
+  <form method="post" class="space-y-4">
+    {% for row in items %}
+      <div class="flex flex-wrap items-center justify-between gap-3 rounded bg-white p-4 shadow-sm ring-1 ring-slate-200">
+        <div>
+          <h2 class="font-bold text-brandNight">{{ row.product.name }}</h2>
+          <p class="text-sm text-slate-600">Unit price: € {{ '%.2f'|format(row.product.price) }}</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <input type="number" name="qty_{{ row.product.id }}" min="0" value="{{ row.quantity }}" class="w-20 rounded border px-2 py-1" />
+          <p class="w-28 text-right font-semibold">€ {{ '%.2f'|format(row.subtotal) }}</p>
+        </div>
+      </div>
+    {% endfor %}
+    <button class="rounded bg-brandDeep px-4 py-2 font-semibold text-white hover:bg-brandNight">Update Cart</button>
+  </form>
+
+  <div class="mt-6 rounded-xl bg-brandNight p-6 text-white">
+    <p class="text-sm uppercase text-slate-300">Order Total</p>
+    <p class="text-3xl font-black">€ {{ '%.2f'|format(total) }}</p>
+    <form method="post" action="{{ url_for('checkout') }}" class="mt-4">
+      <button class="rounded bg-brandFire px-5 py-2.5 font-semibold hover:bg-brandWine">Checkout</button>
+    </form>
+  </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ title or "Company App" }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              brandNight: '#2B2E4A',
+              brandFire: '#E84545',
+              brandWine: '#903749',
+              brandDeep: '#53354A'
+            }
+          }
+        }
+      }
+    </script>
+  </head>
+  <body class="min-h-screen bg-slate-100 text-slate-900">
+    <header class="bg-brandNight text-white">
+      <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-4">
+        <a href="{{ url_for('dashboard') if current_user.is_authenticated else url_for('login') }}" class="text-xl font-black tracking-wide">Company Ops</a>
+        {% if current_user.is_authenticated %}
+          <nav class="flex flex-wrap items-center gap-3 text-sm">
+            <a href="{{ url_for('dashboard') }}" class="hover:text-brandFire">Dashboard</a>
+            <a href="{{ url_for('suppliers') }}" class="hover:text-brandFire">Suppliers</a>
+            <a href="{{ url_for('materials') }}" class="hover:text-brandFire">Materials</a>
+            <a href="{{ url_for('products') }}" class="hover:text-brandFire">Products</a>
+            <a href="{{ url_for('bom') }}" class="hover:text-brandFire">BOM</a>
+            <a href="{{ url_for('purchase_orders') }}" class="hover:text-brandFire">Purchase Orders</a>
+            <a href="{{ url_for('production') }}" class="hover:text-brandFire">Production</a>
+            <a href="{{ url_for('logout') }}" class="rounded bg-brandFire px-3 py-1.5 font-semibold hover:bg-brandWine">Logout</a>
+          </nav>
+        {% else %}
+          <nav class="flex items-center gap-3 text-sm">
+            <a href="{{ url_for('login') }}" class="hover:text-brandFire">Login</a>
+            <a href="{{ url_for('register') }}" class="rounded bg-brandFire px-3 py-1.5 font-semibold hover:bg-brandWine">Register</a>
+          </nav>
+        {% endif %}
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-7xl px-4 py-8">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="mb-6 space-y-2">
+            {% for category, message in messages %}
+              <div class="rounded border px-4 py-3 {% if category == 'error' %}border-red-200 bg-red-50 text-red-700{% else %}border-emerald-200 bg-emerald-50 text-emerald-700{% endif %}">
+                {{ message }}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>

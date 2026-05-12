@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+  <h1 class="text-3xl font-black text-brandNight">Products</h1>
+  <form method="get">
+    <select name="category" onchange="this.form.submit()" class="rounded border px-3 py-2">
+      <option value="">All Categories</option>
+      {% for category in categories %}
+        <option value="{{ category.id }}" {% if selected_category == category.id %}selected{% endif %}>{{ category.name }}</option>
+      {% endfor %}
+    </select>
+  </form>
+</div>
+
+<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+  {% for product in products %}
+    <article class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+      <p class="text-xs font-semibold uppercase text-brandWine">{{ product.category.name }}</p>
+      <h2 class="mt-1 text-xl font-bold text-brandNight">{{ product.name }}</h2>
+      <p class="mt-1 text-sm text-slate-600">{{ product.description or 'No description provided.' }}</p>
+      <div class="mt-4 flex items-center justify-between">
+        <span class="text-lg font-bold text-brandDeep">€ {{ '%.2f'|format(product.price) }}</span>
+        <span class="text-xs text-slate-500">Stock: {{ product.stock_qty }}</span>
+      </div>
+      <form method="post" action="{{ url_for('add_to_cart', product_id=product.id) }}" class="mt-4 flex items-center gap-2">
+        <input type="number" name="quantity" min="1" max="{{ product.stock_qty }}" value="1" class="w-20 rounded border px-2 py-1" />
+        <button class="flex-1 rounded bg-brandFire px-3 py-2 text-sm font-semibold text-white hover:bg-brandWine">Add to Cart</button>
+      </form>
+    </article>
+  {% endfor %}
+</div>
+{% endblock %}

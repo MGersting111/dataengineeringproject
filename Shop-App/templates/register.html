@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="mx-auto max-w-md rounded-xl bg-white p-8 shadow">
+  <h1 class="mb-6 text-2xl font-bold text-brandNight">Create Account</h1>
+  <form method="post" class="space-y-4">
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="mb-1 block text-sm font-medium">First Name</label>
+        <input name="first_name" required class="w-full rounded border px-3 py-2" />
+      </div>
+      <div>
+        <label class="mb-1 block text-sm font-medium">Last Name</label>
+        <input name="last_name" required class="w-full rounded border px-3 py-2" />
+      </div>
+    </div>
+    <div>
+      <label class="mb-1 block text-sm font-medium">Email</label>
+      <input name="email" type="email" required class="w-full rounded border px-3 py-2" />
+    </div>
+    <div>
+      <label class="mb-1 block text-sm font-medium">Password</label>
+      <input name="password" type="password" required class="w-full rounded border px-3 py-2" />
+    </div>
+    <button class="w-full rounded bg-brandFire px-4 py-2.5 font-semibold text-white hover:bg-brandWine">Create Account</button>
+  </form>
+</div>
+{% endblock %}

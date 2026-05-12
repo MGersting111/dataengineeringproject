@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="mb-6 text-3xl font-black text-brandNight">Products</h1>
+
+<div class="grid gap-6 lg:grid-cols-3">
+  <form method="post" class="space-y-3 rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+    <h2 class="text-lg font-bold text-brandDeep">Add Product</h2>
+    <input name="name" placeholder="Product name" required class="w-full rounded border px-3 py-2" />
+    <input name="sku" placeholder="SKU" required class="w-full rounded border px-3 py-2" />
+    <select name="category_id" required class="w-full rounded border px-3 py-2">
+      <option value="">Select category</option>
+      {% for category in categories %}
+        <option value="{{ category.id }}">{{ category.name }}</option>
+      {% endfor %}
+    </select>
+    <input name="price" type="number" min="0" step="0.01" placeholder="Price" class="w-full rounded border px-3 py-2" />
+    <input name="stock_qty" type="number" min="0" step="1" placeholder="Stock" class="w-full rounded border px-3 py-2" />
+    <textarea name="description" placeholder="Description" class="w-full rounded border px-3 py-2"></textarea>
+    <button class="w-full rounded bg-brandFire px-4 py-2 font-semibold text-white hover:bg-brandWine">Save</button>
+  </form>
+
+  <div class="lg:col-span-2 space-y-3">
+    {% for product in products %}
+      <article class="rounded bg-white p-4 shadow-sm ring-1 ring-slate-200">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <h3 class="font-bold text-brandNight">{{ product.name }}</h3>
+            <p class="text-sm text-slate-600">{{ product.sku }} | {{ product.category.name }}</p>
+          </div>
+          <div class="text-right text-sm">
+            <p class="font-semibold">€ {{ '%.2f'|format(product.price) }}</p>
+            <p class="text-brandWine">Stock: {{ product.stock_qty }}</p>
+          </div>
+        </div>
+      </article>
+    {% else %}
+      <p class="rounded bg-white p-4 shadow-sm">No products yet.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,118 @@
+erDiagram
+    %% --- BEREICH: EINKAUF (Procurement) ---
+    SUPPLIER ||--o{ PURCHASE_ORDER : "1:n - sendet Bestellung an"
+    PURCHASE_ORDER ||--o{ PURCHASE_ORDER_ITEM : "1:n - besteht aus"
+    MATERIAL ||--o{ PURCHASE_ORDER_ITEM : "1:n - wird gelistet in"
+    PURCHASE_ORDER }|--|| WAREHOUSE : "n:1 - liefert an Standort"
+
+    %% --- BEREICH: PRODUKTION & STRUKTUR ---
+    PRODUCT ||--o{ BILL_OF_MATERIALS : "1:n - definiert durch"
+    MATERIAL ||--o{ BILL_OF_MATERIALS : "1:n - benötigt für"
+    
+    PRODUCTION ||--|| PRODUCT : "n:1 - stellt her"
+    PRODUCTION ||--o{ MATERIAL : "n:m - verbraucht laut BOM"
+    PRODUCTION }|--|| WAREHOUSE : "n:1 - findet statt in / bucht an"
+
+    %% --- BEREICH: LAGER & BESTAND ---
+    WAREHOUSE ||--o{ INVENTORY : "1:n - verwaltet"
+    MATERIAL ||--o{ INVENTORY : "1:n - lagert als"
+    PRODUCT ||--o{ INVENTORY : "1:n - lagert als"
+
+    %% --- BEREICH: VERKAUF (Sales / E-Commerce) ---
+    CATEGORY ||--o{ PRODUCT : "1:n - gruppiert"
+    CUSTOMER ||--o{ ORDER : "1:n - tätigt"
+    ORDER ||--o{ ORDER_ITEM : "1:n - enthält"
+    PRODUCT ||--o{ ORDER_ITEM : "1:n - ist Position in"
+    ORDER }|--|| WAREHOUSE : "n:1 - Versand aus"
+
+    %% --- ENTITÄTEN & ATTRIBUTE ---
+
+    SUPPLIER {
+        int id PK
+        string name
+        string contact_person
+    }
+
+    PURCHASE_ORDER {
+        int id PK
+        int supplier_id FK
+        date order_date
+        string status "Bestellt/Geliefert"
+    }
+
+    PURCHASE_ORDER_ITEM {
+        int id PK
+        int purchase_order_id FK
+        int material_id FK
+        float quantity
+        decimal unit_cost
+    }
+
+    MATERIAL {
+        int id PK
+        string name
+        string unit "kg, l, Stk"
+    }
+
+    BILL_OF_MATERIALS {
+        int id PK
+        int product_id FK
+        int material_id FK
+        float quantity_required
+    }
+
+    PRODUCT {
+        int id PK
+        string name
+        string sku "Stock Keeping Unit"
+        int category_id FK
+    }
+
+    PRODUCTION {
+        int id PK
+        int product_id FK
+        int warehouse_id FK
+        int quantity_planned
+        string status "In Arbeit/Fertig"
+    }
+
+    WAREHOUSE {
+        int id PK
+        string name
+        string address
+    }
+
+    INVENTORY {
+        int id PK
+        int warehouse_id FK
+        int item_id FK "ID von Material ODER Product"
+        float stock_level
+    }
+
+    ORDER {
+        int id PK
+        int customer_id FK
+        int warehouse_id FK
+        date order_date
+        string shipping_status
+    }
+
+    ORDER_ITEM {
+        int id PK
+        int order_id FK
+        int product_id FK
+        int quantity
+        decimal sale_price
+    }
+
+    CUSTOMER {
+        int id PK
+        string first_name
+        string last_name
+        string email
+    }
+
+    CATEGORY {
+        int id PK
+        string name
+    }
