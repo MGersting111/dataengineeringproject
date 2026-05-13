@@ -2,7 +2,7 @@
 {% block content %}
 <h1 class="mb-6 text-3xl font-black text-brandNight">Operations Dashboard</h1>
 
-<section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+<section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
   <article class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
     <p class="text-sm text-slate-500">Products</p>
     <p class="mt-1 text-3xl font-black text-brandNight">{{ stats.products }}</p>
@@ -12,6 +12,10 @@
     <p class="mt-1 text-3xl font-black text-brandNight">{{ stats.materials }}</p>
   </article>
   <article class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+    <p class="text-sm text-slate-500">Warehouses</p>
+    <p class="mt-1 text-3xl font-black text-brandNight">{{ stats.warehouses }}</p>
+  </article>
+  <article class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
     <p class="text-sm text-slate-500">Purchase Orders</p>
     <p class="mt-1 text-3xl font-black text-brandNight">{{ stats.purchase_orders }}</p>
   </article>
@@ -19,9 +23,13 @@
     <p class="text-sm text-slate-500">Production Plans</p>
     <p class="mt-1 text-3xl font-black text-brandNight">{{ stats.productions }}</p>
   </article>
+  <article class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+    <p class="text-sm text-slate-500">Sales Orders</p>
+    <p class="mt-1 text-3xl font-black text-brandNight">{{ stats.sales_orders }}</p>
+  </article>
 </section>
 
-<section class="mt-8 grid gap-4 lg:grid-cols-2">
+<section class="mt-8 grid gap-4 lg:grid-cols-3">
   <article class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
     <h2 class="mb-3 text-xl font-bold text-brandDeep">Latest Productions</h2>
     {% if not latest_productions %}
@@ -48,6 +56,22 @@
           <li class="flex items-center justify-between rounded bg-slate-50 px-3 py-2">
             <span>#{{ order.id }} - {{ order.supplier.name }}</span>
             <span class="font-semibold text-brandWine">{{ order.status }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </article>
+
+  <article class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+    <h2 class="mb-3 text-xl font-bold text-brandDeep">Latest Sales Orders</h2>
+    {% if not latest_sales_orders %}
+      <p class="text-slate-500">No sales orders yet.</p>
+    {% else %}
+      <ul class="space-y-2 text-sm">
+        {% for order in latest_sales_orders %}
+          <li class="flex items-center justify-between rounded bg-slate-50 px-3 py-2">
+            <span>#{{ order.id }} - {{ order.customer.email }}</span>
+            <span class="font-semibold text-brandWine">{{ order.shipping_status }}</span>
           </li>
         {% endfor %}
       </ul>

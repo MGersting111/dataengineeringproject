@@ -7,6 +7,12 @@
     <h2 class="text-lg font-bold text-brandDeep">Add Material</h2>
     <input name="name" placeholder="Material name" required class="w-full rounded border px-3 py-2" />
     <input name="unit" placeholder="Unit (kg, l, pcs)" required class="w-full rounded border px-3 py-2" />
+    <select name="warehouse_id" class="w-full rounded border px-3 py-2">
+      <option value="">Initial warehouse (optional)</option>
+      {% for warehouse in warehouses %}
+        <option value="{{ warehouse.id }}">{{ warehouse.name }}</option>
+      {% endfor %}
+    </select>
     <input name="current_stock" type="number" min="0" step="0.01" placeholder="Current stock" class="w-full rounded border px-3 py-2" />
     <button class="w-full rounded bg-brandFire px-4 py-2 font-semibold text-white hover:bg-brandWine">Save</button>
   </form>

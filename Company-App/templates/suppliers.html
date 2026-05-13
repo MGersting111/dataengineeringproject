@@ -7,6 +7,15 @@
     <h2 class="text-lg font-bold text-brandDeep">Add Supplier</h2>
     <input name="name" placeholder="Supplier name" required class="w-full rounded border px-3 py-2" />
     <input name="contact_person" placeholder="Contact person" required class="w-full rounded border px-3 py-2" />
+    <input name="address" placeholder="Address" required class="w-full rounded border px-3 py-2" />
+    <div class="grid gap-2 sm:grid-cols-2">
+      <input name="city" placeholder="City" required class="w-full rounded border px-3 py-2" />
+      <input name="country" placeholder="Country" required class="w-full rounded border px-3 py-2" />
+    </div>
+    <div class="grid gap-2 sm:grid-cols-2">
+      <input name="latitude" type="number" step="0.000001" placeholder="Latitude" required class="w-full rounded border px-3 py-2" />
+      <input name="longitude" type="number" step="0.000001" placeholder="Longitude" required class="w-full rounded border px-3 py-2" />
+    </div>
     <button class="w-full rounded bg-brandFire px-4 py-2 font-semibold text-white hover:bg-brandWine">Save</button>
   </form>
 
@@ -15,6 +24,10 @@
       <article class="rounded bg-white p-4 shadow-sm ring-1 ring-slate-200">
         <h3 class="font-bold text-brandNight">{{ supplier.name }}</h3>
         <p class="text-sm text-slate-600">Contact: {{ supplier.contact_person }}</p>
+        {% if supplier.location %}
+          <p class="text-sm text-slate-600">{{ supplier.location.address }}, {{ supplier.location.city }}, {{ supplier.location.country }}</p>
+          <p class="text-xs text-slate-500">Lat/Lon: {{ '%.5f'|format(supplier.location.latitude) }}, {{ '%.5f'|format(supplier.location.longitude) }}</p>
+        {% endif %}
       </article>
     {% else %}
       <p class="rounded bg-white p-4 shadow-sm">No suppliers yet.</p>

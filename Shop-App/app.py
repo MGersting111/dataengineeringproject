@@ -91,27 +91,83 @@ class OrderItem(db.Model):
     product = db.relationship("Product")
 
 
+class ProductStock(db.Model):
+    __tablename__ = "product_stock"
+
+    id = db.Column(db.Integer, primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey("product.id"), nullable=False)
+    warehouse_id = db.Column(db.Integer, db.ForeignKey("warehouse.id"), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False, default=0)
+
+    product = db.relationship("Product")
+    warehouse = db.relationship("Warehouse")
+
+
 @login_manager.user_loader
 def load_user(user_id: str):
     return db.session.get(User, int(user_id))
 
 
 def seed_initial_data() -> None:
-    if not Category.query.first():
-        categories = [
-            Category(name="Fruits"),
-            Category(name="Vegetables"),
-            Category(name="Drinks"),
-        ]
-        db.session.add_all(categories)
-        db.session.flush()
+    category_names = ["Jackets", "Pants", "Footwear", "Safety Accessories"]
+    categories = {}
+    for category_name in category_names:
+        category = Category.query.filter_by(name=category_name).first()
+        if not category:
+            category = Category(name=category_name)
+            db.session.add(category)
+        categories[category_name] = category
 
-        products = [
-            Product(name="Apple Box", sku="APL-BOX-01", category_id=categories[0].id, price=Decimal("9.90"), stock_qty=120, description="Fresh apples in a 2kg box."),
-            Product(name="Tomato Pack", sku="TMT-PCK-01", category_id=categories[1].id, price=Decimal("4.50"), stock_qty=150, description="Ripe tomatoes for cooking."),
-            Product(name="Orange Juice", sku="ORG-JCE-01", category_id=categories[2].id, price=Decimal("2.99"), stock_qty=90, description="1L not-from-concentrate orange juice."),
-        ]
-        db.session.add_all(products)
+    db.session.flush()
+
+    product_defaults = [
+        {
+            "name": "Hi-Vis Work Jacket",
+            "sku": "WW-JCK-001",
+            "category": "Jackets",
+            "price": Decimal("129.00"),
+            "stock_qty": 140,
+            "description": "Weather-resistant high-visibility jacket with reflective details.",
+        },
+        {
+            "name": "Cargo Work Pants",
+            "sku": "WW-PNT-001",
+            "category": "Pants",
+            "price": Decimal("79.00"),
+            "stock_qty": 190,
+            "description": "Durable cargo pants with reinforced knees and utility pockets.",
+        },
+        {
+            "name": "Steel Toe Safety Boots",
+            "sku": "WW-BTS-001",
+            "category": "Footwear",
+            "price": Decimal("149.00"),
+            "stock_qty": 110,
+            "description": "Mid-cut safety boots with steel toe cap and anti-slip sole.",
+        },
+        {
+            "name": "Reflective Safety Vest",
+            "sku": "WW-VST-001",
+            "category": "Safety Accessories",
+            "price": Decimal("24.00"),
+            "stock_qty": 260,
+            "description": "Breathable reflective vest for high-risk work zones.",
+        },
+    ]
+
+    for defaults in product_defaults:
+        if Product.query.filter_by(sku=defaults["sku"]).first():
+            continue
+        db.session.add(
+            Product(
+                name=defaults["name"],
+                sku=defaults["sku"],
+                category_id=categories[defaults["category"]].id,
+                price=defaults["price"],
+                stock_qty=defaults["stock_qty"],
+                description=defaults["description"],
+            )
+        )
 
     if not Warehouse.query.first():
         db.session.add(Warehouse(name="Main Warehouse", address="Industry Street 10"))
@@ -140,6 +196,27 @@ def get_cart_details():
         total += subtotal
 
     return item_rows, total
+
+
+def plan_product_allocation(product_id: int, quantity: int):
+    rows = ProductStock.query.filter(ProductStock.product_id == product_id, ProductStock.quantity > 0).order_by(ProductStock.quantity.desc()).all()
+    if not rows:
+        return []
+
+    available = sum(row.quantity for row in rows)
+    if available < quantity:
+        return None
+
+    allocations = []
+    remaining = quantity
+    for row in rows:
+        if remaining <= 0:
+            break
+        take = min(row.quantity, remaining)
+        allocations.append((row, take))
+        remaining -= take
+
+    return allocations
 
 
 @app.context_processor
@@ -229,6 +306,29 @@ def products():
     )
 
 
+@app.route("/products/<int:product_id>")
+def product_detail(product_id: int):
+    product = db.session.get(Product, product_id)
+    if not product:
+        flash("Product not found.", "error")
+        return redirect(url_for("products"))
+
+    stock_rows = ProductStock.query.filter_by(product_id=product.id).order_by(ProductStock.quantity.desc()).all()
+    related_products = (
+        Product.query.filter(Product.category_id == product.category_id, Product.id != product.id)
+        .order_by(Product.name.asc())
+        .limit(4)
+        .all()
+    )
+
+    return render_template(
+        "product_detail.html",
+        product=product,
+        stock_rows=stock_rows,
+        related_products=related_products,
+    )
+
+
 @app.route("/cart/add/<int:product_id>", methods=["POST"])
 def add_to_cart(product_id: int):
     product = db.session.get(Product, product_id)
@@ -288,17 +388,36 @@ def checkout():
         flash("Your cart is empty.", "error")
         return redirect(url_for("cart"))
 
-    warehouse = Warehouse.query.order_by(Warehouse.id.asc()).first()
-    if not warehouse:
-        flash("No warehouse configured.", "error")
-        return redirect(url_for("cart"))
-
+    warehouse_allocation = {}
     for item in items:
-        if item["quantity"] > item["product"].stock_qty:
+        product = item["product"]
+        quantity = item["quantity"]
+
+        if quantity > product.stock_qty:
             flash(f"Stock changed for {item['product'].name}. Please update your cart.", "error")
             return redirect(url_for("cart"))
 
-    order = Order(customer_id=current_user.id, warehouse_id=warehouse.id, total_amount=total)
+        allocation = plan_product_allocation(product.id, quantity)
+        if allocation is None:
+            flash(f"Warehouse stock changed for {product.name}. Please update your cart.", "error")
+            return redirect(url_for("cart"))
+        warehouse_allocation[product.id] = allocation
+
+    warehouse_weights = {}
+    for product_id, allocations in warehouse_allocation.items():
+        for row, qty in allocations:
+            warehouse_weights[row.warehouse_id] = warehouse_weights.get(row.warehouse_id, 0) + qty
+
+    if warehouse_weights:
+        order_warehouse_id = max(warehouse_weights.items(), key=lambda kv: kv[1])[0]
+    else:
+        fallback = Warehouse.query.order_by(Warehouse.id.asc()).first()
+        if not fallback:
+            flash("No warehouse configured.", "error")
+            return redirect(url_for("cart"))
+        order_warehouse_id = fallback.id
+
+    order = Order(customer_id=current_user.id, warehouse_id=order_warehouse_id, total_amount=total)
     db.session.add(order)
     db.session.flush()
 
@@ -307,6 +426,9 @@ def checkout():
         quantity = item["quantity"]
 
         product.stock_qty -= quantity
+        for row, take in warehouse_allocation.get(product.id, []):
+            row.quantity -= take
+
         db.session.add(
             OrderItem(
                 order_id=order.id,
