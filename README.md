@@ -1,43 +1,43 @@
 # dataengineeringproject
 
-Two simple but fully functional Flask applications were created from the concept model:
+End-to-end local data engineering playground with:
 
-- `Shop-App`: customer-facing shop for browsing products, account creation, cart, checkout, and order history.
-- `Company-App`: internal operations page for supplier orders, warehouse inventory, BOM, production planning, and sales-order fulfillment tracking.
+- `Shop-App`: customer-facing storefront and checkout flow
+- `Company-App`: operations UI for procurement, production, and fulfillment
+- PostgreSQL as system of record
+- Debezium CDC through Kafka Connect
+- Redpanda as Kafka-compatible broker
+- Spark Structured Streaming notebook for downstream processing
 
-Both apps use the same PostgreSQL database and share the `users` table.
+## Architecture
 
-## Realtime event pipeline with Kafka
+`Shop-App / Company-App -> PostgreSQL WAL -> Debezium -> Kafka topics -> Spark Structured Streaming`
 
-There is now a Kafka-compatible CDC pipeline for orders and status changes:
+CDC topics emitted by Debezium:
 
-- `postgres` stays the system of record.
-- `redpanda` provides the Kafka broker API.
-- `kafka-connect` runs Debezium and streams DB changes from PostgreSQL.
-- Topics emitted by Debezium:
-	- `opsdb.public.sales_order`
-	- `opsdb.public.purchase_order`
-	- `opsdb.public.production`
+- `opsdb.public.sales_order`
+- `opsdb.public.purchase_order`
+- `opsdb.public.production`
 
-## Tech stack
+## Prerequisites
 
-- Flask
-- Flask-SQLAlchemy
-- Flask-Login
-- PostgreSQL (Docker)
-- Redpanda (Kafka-compatible broker)
-- Debezium / Kafka Connect
-- Tailwind CSS (CDN)
+- Docker Desktop
+- Python 3.11+ (3.10 also works)
+- Optional for notebook: local Spark/PySpark environment
 
-## 1) Start PostgreSQL in Docker
+## 1) Start Infrastructure
 
-From the project root:
+From repository root:
 
-```bash
+```powershell
 docker compose up -d
 ```
 
-This now starts PostgreSQL, Redpanda, and Kafka Connect.
+This starts:
+
+- PostgreSQL (`localhost:5433`)
+- Redpanda Kafka endpoint (`localhost:19092`)
+- Kafka Connect REST (`localhost:8083`)
 
 Database defaults:
 
@@ -47,107 +47,68 @@ Database defaults:
 - User: `postgres`
 - Password: `postgres`
 
-## 2) Run Shop-App
+## 2) Run the Flask Apps
 
-```bash
+### Shop-App
+
+```powershell
 cd Shop-App
-python3 -m venv .venv
-source .venv/bin/activate
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-cp .env.example .env
 python app.py
 ```
 
 Open: `http://localhost:5001`
 
-## 3) Run Company-App
+### Company-App
 
-```bash
+```powershell
 cd Company-App
-python3 -m venv .venv
-source .venv/bin/activate
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-cp .env.example .env
 python app.py
 ```
 
 Open: `http://localhost:5002`
 
-## Notes
+Notes:
 
-- `db.create_all()` is called automatically on app startup.
-- Initial sample data is seeded for a workwear company (products, materials, suppliers, BOM, warehouse).
-- If you register a user in one app, the same credentials work in the other app because both use the shared `users` table.
+- tables are auto-created on app startup
+- sample operational data is seeded automatically
+- both apps share the same `users` table
 
-## Operational workflows
+## 3) Enable CDC Connector (Debezium)
 
-- Purchase Orders: `Ordered -> In Transit -> Received`
-- Sales Orders: `Pending -> Picking -> Shipped -> Delivered`
-- Production: `Planned -> In Progress -> Completed`
-- BOM visibility: open `BOM` for grouped per-product requirements and click into product detail pages for full material breakdown.
+Run once after containers are up:
 
-When a purchase order reaches `Received`, material stock is added automatically.
-When production reaches `Completed`, BOM materials are consumed across warehouses and finished product stock increases at the production site.
-When a shop checkout is created, product stock is reduced immediately.
-
-Warehouse logic is active:
-
-- Materials are stored per warehouse (`material_stock`), not only globally.
-- Products are stored per warehouse (`product_stock`) and aggregated for the shop.
-- Purchase orders target a specific destination warehouse.
-- Production can be supplied by multiple warehouses (preferred own site first, then fallback warehouses).
-- Supplier and warehouse coordinates are seeded for future map visualization.
-
-In Company-App, open `Warehouses` to inspect stock by location.
-
-## Optional event simulator job
-
-You can run a throttled simulator that creates and advances realistic events over time.
-It is designed to avoid flooding the database and creates only a small number of events per tick.
-
-```bash
-cd Company-App
-source .venv/bin/activate
-python simulate_ops.py --ticks 60 --sleep 5 --day-minutes 2
-```
-
-Useful options:
-
-- `--ticks`: number of cycles
-- `--sleep`: seconds between cycles
-- `--day-minutes`: real minutes that represent one simulated day (default `2`)
-- `--seed`: deterministic random seed for reproducible runs
-
-## Enable CDC connector
-
-After the containers are up, register the Debezium connector once:
-
-```bash
+```powershell
 cd kafka-pipeline
-python3 register_connector.py
-```
-
-The bootstrap script also configures `REPLICA IDENTITY FULL` on the tracked tables so update events include the previous status.
-
-That connector forwards inserts and updates for:
-
-- `sales_order`
-- `purchase_order`
-- `production`
-
-## Test consumer for Kafka events
-
-Install the small test dependency and start the printer:
-
-```bash
-cd kafka-pipeline
-python3 -m venv .venv
-source .venv/bin/activate
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-python print_events.py
+python register_connector.py
 ```
 
-The script consumes these topics from `localhost:19092` and prints events such as:
+What this does:
+
+- registers or updates connector `orders-cdc` at Kafka Connect
+- sets `REPLICA IDENTITY FULL` on tracked tables
+- enables CDC capture for:
+  - `public.sales_order`
+  - `public.purchase_order`
+  - `public.production`
+
+## 4) Validate Kafka Events Quickly
+
+```powershell
+cd kafka-pipeline
+.\.venv\Scripts\Activate.ps1
+python print_events.py --bootstrap-servers localhost:19092
+```
+
+Expected output pattern:
 
 ```text
 [2026-05-13T18:22:01.112000+00:00] sales_order#14 created status=Pending
@@ -155,4 +116,65 @@ The script consumes these topics from `localhost:19092` and prints events such a
 [2026-05-13T18:22:11.904000+00:00] purchase_order#7 status changed Ordered -> In Transit
 ```
 
-To generate traffic, use the shop checkout flow, the Company-App status actions, or the optional simulator.
+## 5) Generate Operational Traffic
+
+You can generate events from UI interactions or simulator.
+
+### Manual
+
+- create checkouts in Shop-App
+- advance statuses in Company-App
+
+### Simulator (recommended)
+
+```powershell
+cd Company-App
+.\.venv\Scripts\Activate.ps1
+python simulate_ops.py --ticks 60 --sleep 5 --day-minutes 2
+```
+
+Alias entry point is also available:
+
+```powershell
+python ops_sim.py --ticks 60 --sleep 5 --day-minutes 2
+```
+
+Useful options:
+
+- `--ticks`: number of cycles
+- `--sleep`: seconds between cycles
+- `--day-minutes`: real minutes mapped to one simulated day
+- `--seed`: deterministic random seed
+
+## 6) Run Spark Processing Notebook
+
+Notebook path:
+
+- `Databricks/ProcessKafkaEvents.ipynb`
+
+### Local Spark runtime (recommended for this repo)
+
+- use `KAFKA_BOOTSTRAP=localhost:19092`
+- run notebook in VS Code/Jupyter with local PySpark
+
+### Databricks runtime
+
+Databricks cannot directly access your local Docker endpoints (`localhost:*`) by default.
+You need one of the following:
+
+- routable broker endpoint reachable by Databricks
+- private network connectivity (VPN/VNet)
+- explicit tunneling/proxy setup
+
+If no network path exists, execute the notebook locally.
+
+## 7) Suggested End-to-End Test Flow
+
+1. `docker compose up -d`
+2. Start both Flask apps
+3. Register connector via `register_connector.py`
+4. Start `print_events.py` and keep it running
+5. Run `simulate_ops.py` (or `ops_sim.py`) for 2-5 minutes
+6. Run notebook streaming cells and verify parquet output and status aggregations
+
+If step 4 shows events and the notebook writes output files, the full pipeline is working.
